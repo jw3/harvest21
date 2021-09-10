@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">harvest21</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+
+    <string name="add_connection_lwt_topic_label">Topic</string>
+    <string name="add_connection_lwt_message_label">Message</string>
+    <string name="message_time">Time:</string>
+    <string name="message_topic">Topic: </string>
+    <string name="placeholder_example">Example application</string>
 </resources>
