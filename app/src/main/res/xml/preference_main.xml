@@ -1,0 +1,39 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/events_header">
+
+        <EditTextPreference
+            app:key="device_uid"
+            app:title="@string/events_device_uid_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:key="events_send_pos"
+            app:title="@string/events_send_pos_title" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/broker_header">
+
+        <EditTextPreference
+            app:key="broker_url"
+            app:title="@string/broker_url_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:key="broker_user"
+            app:title="@string/broker_user_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:key="broker_pass"
+            app:title="@string/broker_pass_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:key="broker_tls"
+            app:title="@string/broker_tls_title" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

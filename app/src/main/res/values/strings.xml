@@ -1,12 +1,19 @@
 <resources>
     <string name="app_name">harvest21</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
 
+    <string name="title_activity_settings">SettingsActivity</string>
 
-    <string name="add_connection_lwt_topic_label">Topic</string>
-    <string name="add_connection_lwt_message_label">Message</string>
-    <string name="message_time">Time:</string>
-    <string name="message_topic">Topic: </string>
-    <string name="placeholder_example">Example application</string>
+    <!-- Preference Titles -->
+    <string name="broker_header">Broker</string>
+    <string name="events_header">Events</string>
+
+    <!-- Broker Preferences -->
+    <string name="broker_url_title">Broker URL</string>
+    <string name="broker_user_title">Broker Username</string>
+    <string name="broker_pass_title">Broker Password</string>
+    <string name="broker_tls_title">Use TLS</string>
+
+    <!-- Events Preferences -->
+    <string name="events_device_uid_title">Device Name</string>
+    <string name="events_send_pos_title">Send my position</string>
 </resources>
