@@ -10,9 +10,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.preference.PreferenceManager
 import com.esri.arcgisruntime.geometry.SpatialReference
 import com.esri.arcgisruntime.mapping.ArcGISMap
+import com.esri.arcgisruntime.mapping.view.MapView
 import kotlinx.android.synthetic.main.activity_main.*
 import org.eclipse.paho.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
@@ -21,7 +23,7 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.main, menu)
         return true
@@ -38,9 +40,13 @@ class MainActivity : AppCompatActivity() {
 
         askGpsPermission()
 
-        mapView.map = ArcGISMap(SpatialReference.create(26917))
-        mapView.locationDisplay.isShowLocation = true
-        mapView.locationDisplay.startAsync()
+        val map = MapFragment.newInstance()
+
+        supportFragmentManager
+            .beginTransaction()
+            .disallowAddToBackStack()
+            .replace(R.id.mapContainer, map)
+            .commit()
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val deviceId = prefs.getString("device_uid", "androidz")
