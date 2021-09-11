@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -47,7 +48,8 @@ class MainActivity : AppCompatActivity() {
         val brokerUser = prefs.getString("broker_user", "")
         val brokerPass = prefs.getString("broker_pass", "")
 
-        theText.text = "connecting to $brokerUrl as $brokerUser"
+
+        val msg = "connecting to $brokerUrl as $brokerUser"
 
         try {
             val client = MqttAndroidClient(this, "ssl://$brokerUrl:443", deviceId)
@@ -59,16 +61,16 @@ class MainActivity : AppCompatActivity() {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     asyncActionToken?.let {
                         it.client.publish("test", MqttMessage("!!!!".toByteArray()))
-                        theText.text = "${theText.text} ✅"
+                        Toast.makeText(applicationContext, "$msg ✅", Toast.LENGTH_SHORT).show()
                     }
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                    theText.text = "${theText.text}\n❗${exception?.cause?.message}"
+                    Toast.makeText(applicationContext, "$msg\n❗${exception?.cause?.message}", Toast.LENGTH_LONG).show()
                 }
             })
         } catch (e: Exception) {
-            theText.text = e.message
+            Toast.makeText(applicationContext, "$msg\n❗${e.cause?.message}", Toast.LENGTH_LONG).show()
             return
         }
     }
