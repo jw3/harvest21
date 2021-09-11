@@ -43,11 +43,10 @@ class MainActivity : AppCompatActivity() {
         mapView.locationDisplay.startAsync()
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        val deviceId = prefs.getString("device_uid", "")
-        val brokerUrl = prefs.getString("broker_url", "")
-        val brokerUser = prefs.getString("broker_user", "")
-        val brokerPass = prefs.getString("broker_pass", "")
-
+        val deviceId = prefs.getString("device_uid", "androidz")
+        val brokerUrl = prefs.getString("broker_url", "localhost")
+        val brokerUser = prefs.getString("broker_user", "admin")
+        val brokerPass = prefs.getString("broker_pass", "admin")
 
         val msg = "connecting to $brokerUrl as $brokerUser"
 
