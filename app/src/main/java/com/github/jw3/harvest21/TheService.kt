@@ -10,6 +10,8 @@ import android.os.Messenger
 import android.widget.Toast
 import com.esri.arcgisruntime.geometry.Point
 import com.esri.arcgisruntime.location.AndroidLocationDataSource
+import com.github.jw3.harvest21.prefs.BrokerPrefs
+import com.github.jw3.harvest21.prefs.DevicePrefs
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.ImplicitReflectionSerializer
 import org.eclipse.paho.android.service.MqttAndroidClient

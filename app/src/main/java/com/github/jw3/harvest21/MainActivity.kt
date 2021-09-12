@@ -1,29 +1,16 @@
 package com.github.jw3.harvest21
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Messenger
 import android.view.Menu
 import android.view.MenuItem
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import androidx.preference.PreferenceManager
-import com.esri.arcgisruntime.geometry.SpatialReference
-import com.esri.arcgisruntime.mapping.ArcGISMap
-import com.esri.arcgisruntime.mapping.view.MapView
+import com.github.jw3.harvest21.prefs.DevicePrefs
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.android.synthetic.main.activity_main.*
-import org.eclipse.paho.android.service.MqttAndroidClient
-import org.eclipse.paho.client.mqttv3.IMqttActionListener
-import org.eclipse.paho.client.mqttv3.IMqttToken
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions
-import org.eclipse.paho.client.mqttv3.MqttMessage
 import javax.inject.Inject
 
 

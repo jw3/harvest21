@@ -1,7 +1,8 @@
-package com.github.jw3.harvest21
+package com.github.jw3.harvest21.di
 
 import android.content.Context
 import androidx.preference.PreferenceManager
+import com.github.jw3.harvest21.prefs.DevicePrefs
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -11,14 +12,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Module
 @InstallIn(ActivityComponent::class, ServiceComponent::class)
-object BrokerModule {
+class DeviceModule {
     @Provides
-    fun provideBrokerPrefs(@ApplicationContext applicationContext: Context): BrokerPrefs {
+    fun providePrefs(@ApplicationContext applicationContext: Context): DevicePrefs {
         val prefs = PreferenceManager.getDefaultSharedPreferences(applicationContext)
-        return BrokerPrefs.newInstance(
-            prefs.getString("broker_url", "localhost")!!,
-            prefs.getString("broker_user", "admin")!!,
-            prefs.getString("broker_pass", "admin")?.toCharArray()!!
-        )
+        val id = prefs.getString("device_uid", "androidz").let {
+            if(it.isNullOrBlank()) "unknown" else it
+        }
+        return DevicePrefs.newInstance(id)
     }
 }

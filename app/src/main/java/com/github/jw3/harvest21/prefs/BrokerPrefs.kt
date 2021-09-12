@@ -1,4 +1,4 @@
-package com.github.jw3.harvest21
+package com.github.jw3.harvest21.prefs
 
 interface BrokerPrefs {
     val url: String
@@ -14,18 +14,6 @@ interface BrokerPrefs {
                 get() = user
             override val pass: CharArray
                 get() = pass
-        }
-    }
-}
-
-interface DevicePrefs {
-    val id: String
-
-    companion object {
-        @JvmStatic
-        fun newInstance(id: String) = object: DevicePrefs {
-            override val id: String
-                get() = id
         }
     }
 }
