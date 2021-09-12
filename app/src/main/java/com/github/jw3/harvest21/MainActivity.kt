@@ -1,9 +1,11 @@
 package com.github.jw3.harvest21
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Messenger
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
@@ -15,15 +17,20 @@ import androidx.preference.PreferenceManager
 import com.esri.arcgisruntime.geometry.SpatialReference
 import com.esri.arcgisruntime.mapping.ArcGISMap
 import com.esri.arcgisruntime.mapping.view.MapView
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.android.synthetic.main.activity_main.*
 import org.eclipse.paho.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttToken
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import javax.inject.Inject
 
 
+@AndroidEntryPoint
 class MainActivity : FragmentActivity() {
+    @Inject lateinit var devicePrefs: DevicePrefs
+
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.main, menu)
         return true
@@ -48,36 +55,7 @@ class MainActivity : FragmentActivity() {
             .replace(R.id.mapContainer, map)
             .commit()
 
-        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        val deviceId = prefs.getString("device_uid", "androidz")
-        val brokerUrl = prefs.getString("broker_url", "localhost")
-        val brokerUser = prefs.getString("broker_user", "admin")
-        val brokerPass = prefs.getString("broker_pass", "admin")
-
-        val msg = "connecting to $brokerUrl as $brokerUser"
-
-        try {
-            val client = MqttAndroidClient(this, "ssl://$brokerUrl:443", deviceId)
-            val opts = MqttConnectOptions()
-            opts.userName = brokerUser
-            opts.password = brokerPass?.toCharArray()
-
-            client.connect(opts, null, object : IMqttActionListener {
-                override fun onSuccess(asyncActionToken: IMqttToken?) {
-                    asyncActionToken?.let {
-                        it.client.publish("test", MqttMessage("!!!!".toByteArray()))
-                        Toast.makeText(applicationContext, "$msg ✅", Toast.LENGTH_SHORT).show()
-                    }
-                }
-
-                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                    Toast.makeText(applicationContext, "$msg\n❗${exception?.cause?.message}", Toast.LENGTH_LONG).show()
-                }
-            })
-        } catch (e: Exception) {
-            Toast.makeText(applicationContext, "$msg\n❗${e.cause?.message}", Toast.LENGTH_LONG).show()
-            return
-        }
+        startService(Intent(this, TheService::class.java))
     }
 
     private fun askGpsPermission() {
