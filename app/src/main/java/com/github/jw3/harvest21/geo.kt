@@ -9,6 +9,7 @@ import com.esri.arcgisruntime.geometry.SpatialReference
 import com.esri.arcgisruntime.geometry.SpatialReferences
 
 object geo {
+    // todo;; pref
     val sr = SpatialReference.create(26917)
     val wgs84 = SpatialReferences.getWgs84()
     val pt0 = Point(0.0, 0.0, sr)

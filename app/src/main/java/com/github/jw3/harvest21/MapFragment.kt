@@ -3,15 +3,24 @@ package com.github.jw3.harvest21
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.location.Location
+import android.location.LocationManager
 import android.os.Bundle
 import android.os.Messenger
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import com.esri.arcgisruntime.geometry.Point
 import com.esri.arcgisruntime.geometry.SpatialReference
 import com.esri.arcgisruntime.mapping.ArcGISMap
+import com.esri.arcgisruntime.mapping.Basemap
+import com.esri.arcgisruntime.mapping.Viewpoint
 import com.esri.arcgisruntime.mapping.view.GraphicsOverlay
+import com.esri.arcgisruntime.mapping.view.LocationDisplay
+import com.github.jw3.harvest21.geo.wgs84
+import com.github.jw3.harvest21.map.basemaps
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.android.synthetic.main.fragment_map.view.*
@@ -37,6 +46,7 @@ class MapFragment : Fragment(), CoroutineScope by MainScope() {
             }
         }
     }
+
     @ObsoleteCoroutinesApi
     val consumer = Messenger(ConsumerHandler(symbolbus))
 
@@ -45,22 +55,56 @@ class MapFragment : Fragment(), CoroutineScope by MainScope() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        val applicationContext = requireContext()
+
+        // todo;; pref
+        val initialScale = 10000.0
+
+        // todo;; pref (full path)
+        val basemapPath = applicationContext.filesDir
+
         val fragment = inflater.inflate(R.layout.fragment_map, container, false)
-        fragment.findViewById<com.esri.arcgisruntime.mapping.view.MapView>(R.id.mapView)?.let {
-            it.mapView.map = ArcGISMap(SpatialReference.create(26917))
-            it.mapView.locationDisplay.isShowLocation = true
-            it.mapView.locationDisplay.startAsync()
+        fragment.findViewById<com.esri.arcgisruntime.mapping.view.MapView>(R.id.mapView)?.let { frag ->
+            val pos: Point = currentLocation(applicationContext)?.let { Point(it.longitude, it.latitude, geo.wgs84) } ?: geo.pt0
+            frag.mapView.map = basemaps.fromStorage(basemapPath)?.let { base ->
+                val m = ArcGISMap(geo.sr)
+                m.basemap = base
+                m.initialViewpoint = Viewpoint(pos, initialScale)
+                m
+            } ?: ArcGISMap(Basemap.Type.IMAGERY, pos.x, pos.y, 15)
+            frag.mapView.locationDisplay.autoPanMode = LocationDisplay.AutoPanMode.NAVIGATION
+            frag.mapView.locationDisplay.isShowLocation = true
+            frag.mapView.locationDisplay.startAsync()
         }
 
         svcConnection = EventsServiceConnection(consumer)
-        val ctx = requireContext().applicationContext
-        ctx.bindService(Intent(ctx, TheService::class.java), svcConnection, Context.BIND_AUTO_CREATE)
+        applicationContext.bindService(
+            Intent(applicationContext, TheService::class.java),
+            svcConnection,
+            Context.BIND_AUTO_CREATE
+        )
 
         return fragment
+    }
+
+    private fun currentLocation(context: Context): Location? {
+        // todo;; inject location manager
+        val loc = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return try {
+            loc.getLastKnownLocation(loc.getProviders(true).first())
+        } catch (e: SecurityException) {
+            Log.w("gps", "unable to get initial location")
+            null
+        } catch (e: NoSuchElementException) {
+            Log.w("gps", "unable to get initial location")
+            null
+        }
     }
 
     companion object {
         @JvmStatic
         fun newInstance() = MapFragment()
+
+
     }
 }
