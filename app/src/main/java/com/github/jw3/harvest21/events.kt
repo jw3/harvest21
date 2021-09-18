@@ -32,7 +32,7 @@ interface Events {
     }
 }
 
-class ProducerHandler(val e: Events) : Handler() {
+class ProducerHandler(private val e: Events) : Handler() {
     override fun handleMessage(msg: Message) {
         when (msg.what) {
             Events.Sub -> e.subscribers.add(msg.replyTo)
@@ -40,7 +40,7 @@ class ProducerHandler(val e: Events) : Handler() {
     }
 }
 
-class ConsumerHandler(val bus: SendChannel<M>) : Handler() {
+class ConsumerHandler(private val bus: SendChannel<M>) : Handler() {
     override fun handleMessage(msg: Message) {
         when (msg.what) {
             Events.Move -> {
