@@ -3,13 +3,11 @@ package com.github.jw3.harvest21
 
 import android.content.ComponentName
 import android.content.ServiceConnection
-import android.os.Handler
-import android.os.IBinder
-import android.os.Message
-import android.os.Messenger
+import android.os.*
 import com.esri.arcgisruntime.symbology.SimpleMarkerSymbol
-import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.android.parcel.Parcelize
 import kotlinx.coroutines.channels.SendChannel
+import kotlinx.serialization.Serializable
 
 sealed class Msg
 data class Move(val x: Double, val y: Double) : Msg()
@@ -21,7 +19,9 @@ enum class Delayed(val rgb: Int, val style: SimpleMarkerSymbol.Style) {
     Long(-0x10000, SimpleMarkerSymbol.Style.X)
 }
 
-data class M(val id: String, val x: Double, val y: Double)
+@Parcelize
+@Serializable
+data class M(val id: String, val x: Double, val y: Double): Parcelable
 
 interface Events {
     val subscribers: ArrayList<Messenger>
@@ -46,7 +46,9 @@ class ConsumerHandler(val bus: SendChannel<M>) : Handler() {
             Events.Move -> {
                 val b = msg.data
                 b.getString("id")?.let { id ->
-                    bus.offer(M(id, b.getDouble("x"), b.getDouble("y")))
+                    b.getParcelable<M>("e")?.let { m ->
+                        bus.offer(m)
+                    }
                 }
             }
         }

@@ -13,7 +13,9 @@ import com.esri.arcgisruntime.location.AndroidLocationDataSource
 import com.github.jw3.harvest21.prefs.BrokerPrefs
 import com.github.jw3.harvest21.prefs.DevicePrefs
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.serialization.ImplicitReflectionSerializer
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.eclipse.paho.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.*
 import javax.inject.Inject
@@ -36,9 +38,6 @@ class TheService : Service(), Events {
     var lastPos: Point? = null
     private lateinit var svcConnection: ServiceConnection
 
-
-
-    @ImplicitReflectionSerializer
     override fun onCreate() {
         super.onCreate()
 
@@ -54,8 +53,11 @@ class TheService : Service(), Events {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     asyncActionToken?.let { tok ->
                         val alds = AndroidLocationDataSource(applicationContext,"gps", 5L, 1f)
-                        alds.addLocationChangedListener { _ ->
-                            tok.client.publish("mov", MqttMessage("moved".toByteArray()))
+                        alds.addLocationChangedListener { moved ->
+                            val loc = moved.location
+                            val m = M("foo", loc.position.x, loc.position.y)
+                            val payload = Json.encodeToString(m)
+                            tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
                             Toast.makeText(applicationContext, "moved: ✅", Toast.LENGTH_SHORT).show()
                         }
                         alds.startAsync()
@@ -67,19 +69,24 @@ class TheService : Service(), Events {
                                 override fun connectionLost(cause: Throwable?) {
                                 }
 
+                                // topic: device-id/m
+                                // topic: device-id/+
+                                // topic: +/m
+                                // device-id first allows simple substring to parse the id
                                 override fun messageArrived(topic: String?, message: MqttMessage?) {
                                     println("received $topic ${message.toString()}")
 
-                                    message?.payload.contentToString().let { encoded ->
-                                        if (!encoded.startsWith(device.id)) {
-                                            val (id, x, y) = encoded.split(":")
-                                            val b = Bundle()
-                                            b.putString("id", id)
-                                            b.putDouble("x", x.toDouble())
-                                            b.putDouble("y", y.toDouble())
-                                            val m: Message = Message.obtain(null, Events.Move)
-                                            m.data = b
-                                            subscribers.forEach { it.send(m) }
+                                    topic?.split("/", limit = 1)?.first()?.let { id ->
+                                        if(id != device.id) {
+                                            message?.payload.contentToString().let { encoded ->
+                                                val e = Json.decodeFromString<M>(encoded)
+                                                val b = Bundle()
+                                                b.putString("id", id)
+                                                b.putParcelable("e", e)
+                                                val m: Message = Message.obtain(null, Events.Move)
+                                                m.data = b
+                                                subscribers.forEach { it.send(m) }
+                                            }
                                         }
                                     }
                                 }
