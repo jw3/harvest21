@@ -25,7 +25,7 @@ class GraphicActor private constructor(val id: String) : CoroutineScope by MainS
                     timer = lastPingAsync(System.currentTimeMillis(), channel)
                     symbol.color = Delayed.None.rgb
                     symbol.style = Delayed.None.style
-                    graphic.geometry = Point(e.y, e.x, geo.wgs84)
+                    graphic.geometry = Point(e.x, e.y, geo.wgs84)
                 }
                 is PingDelay -> {
                     symbol.color = e.sz.rgb

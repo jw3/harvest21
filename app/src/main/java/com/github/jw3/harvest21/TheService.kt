@@ -12,7 +12,9 @@ import com.esri.arcgisruntime.geometry.Point
 import com.esri.arcgisruntime.location.AndroidLocationDataSource
 import com.github.jw3.harvest21.prefs.BrokerPrefs
 import com.github.jw3.harvest21.prefs.DevicePrefs
+import com.github.jw3.harvest21.prefs.MapPrefs
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -29,6 +31,7 @@ import javax.inject.Inject
  */
 @AndroidEntryPoint
 class TheService : Service(), Events {
+    @Inject lateinit var map: MapPrefs
     @Inject lateinit var prefs: BrokerPrefs
     @Inject lateinit var device: DevicePrefs
 
@@ -38,6 +41,7 @@ class TheService : Service(), Events {
     var lastPos: Point? = null
     private lateinit var svcConnection: ServiceConnection
 
+    @ExperimentalSerializationApi
     override fun onCreate() {
         super.onCreate()
 
@@ -55,7 +59,7 @@ class TheService : Service(), Events {
                         val alds = AndroidLocationDataSource(applicationContext,"gps", 5L, 1f)
                         alds.addLocationChangedListener { moved ->
                             val loc = moved.location
-                            val m = M("foo", loc.position.x, loc.position.y)
+                            val m = P(loc.position.x, loc.position.y)
                             val payload = Json.encodeToString(m)
                             tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
                             Toast.makeText(applicationContext, "moved: ✅", Toast.LENGTH_SHORT).show()
@@ -63,32 +67,31 @@ class TheService : Service(), Events {
                         alds.startAsync()
                         Toast.makeText(applicationContext, "connected ✅", Toast.LENGTH_SHORT).show()
 
-
-                        tok.client.subscribe("mov", 0).let { sub ->
+                        // topic: device-id/m
+                        // topic: device-id/+
+                        // topic: +/m
+                        // device-id first allows simple substring to parse the id
+                        tok.client.subscribe("+/m", 0).let { sub ->
                             sub.client.setCallback(object : MqttCallback {
-                                override fun connectionLost(cause: Throwable?) {
-                                }
-
-                                // topic: device-id/m
-                                // topic: device-id/+
-                                // topic: +/m
-                                // device-id first allows simple substring to parse the id
                                 override fun messageArrived(topic: String?, message: MqttMessage?) {
                                     println("received $topic ${message.toString()}")
-
-                                    topic?.split("/", limit = 1)?.first()?.let { id ->
-                                        if(id != device.id) {
-                                            message?.payload.contentToString().let { encoded ->
-                                                val e = Json.decodeFromString<M>(encoded)
+                                    topic?.split("/", limit = 2)?.first()?.let { id ->
+                                        if(id != device.id || map.echoLocation) {
+                                            val payload = message?.payload?.let { String(it) }
+                                            payload?.let { encoded ->
+                                                val e = Json.decodeFromString<P>(encoded)
                                                 val b = Bundle()
                                                 b.putString("id", id)
-                                                b.putParcelable("e", e)
-                                                val m: Message = Message.obtain(null, Events.Move)
-                                                m.data = b
+                                                b.putParcelable("e", M(id, e.x, e.y))
+                                                val m: Message = Message.obtain(null, Events.Move).also { it.data = b }
                                                 subscribers.forEach { it.send(m) }
                                             }
                                         }
                                     }
+                                }
+
+                                override fun connectionLost(cause: Throwable?) {
+                                    println("================== connection lost ==================")
                                 }
 
                                 override fun deliveryComplete(token: IMqttDeliveryToken?) {

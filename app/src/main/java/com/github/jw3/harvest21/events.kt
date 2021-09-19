@@ -19,8 +19,12 @@ enum class Delayed(val rgb: Int, val style: SimpleMarkerSymbol.Style) {
     Long(-0x10000, SimpleMarkerSymbol.Style.X)
 }
 
-@Parcelize
+// Wire format
 @Serializable
+data class P(val x: Double, val y: Double)
+
+// IPC format
+@Parcelize
 data class M(val id: String, val x: Double, val y: Double): Parcelable
 
 interface Events {

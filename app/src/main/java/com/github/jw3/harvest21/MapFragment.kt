@@ -21,6 +21,9 @@ import com.esri.arcgisruntime.mapping.view.GraphicsOverlay
 import com.esri.arcgisruntime.mapping.view.LocationDisplay
 import com.github.jw3.harvest21.geo.wgs84
 import com.github.jw3.harvest21.map.basemaps
+import com.github.jw3.harvest21.prefs.DevicePrefs
+import com.github.jw3.harvest21.prefs.MapPrefs
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.android.synthetic.main.fragment_map.view.*
@@ -28,8 +31,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.actor
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MapFragment : Fragment(), CoroutineScope by MainScope() {
+    @Inject lateinit var prefs: MapPrefs
+
     private lateinit var svcConnection: ServiceConnection
 
     private val locationsLayer = GraphicsOverlay()
@@ -72,8 +79,13 @@ class MapFragment : Fragment(), CoroutineScope by MainScope() {
                 m.initialViewpoint = Viewpoint(pos, initialScale)
                 m
             } ?: ArcGISMap(Basemap.Type.IMAGERY, pos.x, pos.y, 15)
-            frag.mapView.locationDisplay.autoPanMode = LocationDisplay.AutoPanMode.NAVIGATION
-            frag.mapView.locationDisplay.isShowLocation = true
+
+            frag.mapView.locationDisplay.isShowLocation = prefs.echoLocation.not()
+            if(prefs.autoPan) {
+                frag.mapView.locationDisplay.autoPanMode = LocationDisplay.AutoPanMode.NAVIGATION
+            }
+
+            frag.mapView.graphicsOverlays.add(locationsLayer)
             frag.mapView.locationDisplay.startAsync()
         }
 
@@ -104,7 +116,5 @@ class MapFragment : Fragment(), CoroutineScope by MainScope() {
     companion object {
         @JvmStatic
         fun newInstance() = MapFragment()
-
-
     }
 }
