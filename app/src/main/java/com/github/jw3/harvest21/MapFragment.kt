@@ -8,29 +8,25 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.os.Messenger
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.Fragment
 import com.esri.arcgisruntime.geometry.Point
-import com.esri.arcgisruntime.geometry.SpatialReference
 import com.esri.arcgisruntime.mapping.ArcGISMap
 import com.esri.arcgisruntime.mapping.Basemap
 import com.esri.arcgisruntime.mapping.Viewpoint
 import com.esri.arcgisruntime.mapping.view.GraphicsOverlay
 import com.esri.arcgisruntime.mapping.view.LocationDisplay
-import com.github.jw3.harvest21.geo.wgs84
 import com.github.jw3.harvest21.map.basemaps
-import com.github.jw3.harvest21.prefs.DevicePrefs
 import com.github.jw3.harvest21.prefs.MapPrefs
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.android.synthetic.main.fragment_map.view.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.actor
+import kotlinx.coroutines.yield
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -48,6 +44,7 @@ class MapFragment : Fragment(), CoroutineScope by MainScope() {
             graphicsById.getOrPut(e.id, {
                 GraphicActor.add(e.id, locationsLayer)
             }).apply {
+                yield()
                 actor.offer(Move(e.x, e.y))
                 //eventCounterTxt.text = "${eventCount++}"
             }

@@ -70,16 +70,14 @@ class TheService : Service(), Events {
                             when(lastKnownLoc) {
                                 null -> {
                                     lastKnownLoc = curr
-                                    val payload = makePayload(curr, moveResolution)
 
-                                    // todo;; bug elsewhere requiring a double init event for symbol
-                                    tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
+                                    val payload = makePayload(curr, moveResolution)
                                     tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
                                     Toast.makeText(applicationContext, "first move ✅", Toast.LENGTH_SHORT).show()
                                 }
                                 else -> {
                                     val d = GeometryEngine.distanceBetween(curr, lastKnownLoc)
-                                    if(d > minMoveDistance) {
+                                    if(d >= minMoveDistance) {
                                         val payload = makePayload(curr, moveResolution)
                                         tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
                                     }

@@ -1,20 +1,18 @@
 package com.github.jw3.harvest21
 
 import com.esri.arcgisruntime.geometry.Point
-import com.esri.arcgisruntime.geometry.SpatialReferences
 import com.esri.arcgisruntime.mapping.view.Graphic
 import com.esri.arcgisruntime.mapping.view.GraphicsOverlay
 import com.esri.arcgisruntime.symbology.SimpleMarkerSymbol
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.async
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.actor
-import kotlinx.coroutines.delay
 
 class GraphicActor private constructor(val id: String) : CoroutineScope by MainScope() {
     private val symbol = SimpleMarkerSymbol(Delayed.None.style, Delayed.None.rgb, 15.0f)
     private val graphic = Graphic(Point(0.0, 0.0, geo.wgs84), symbol)
+
+    @ObsoleteCoroutinesApi
     val actor = actor<Msg> {
         var timer = lastPingAsync(0, channel)
 
