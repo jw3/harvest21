@@ -36,4 +36,16 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="@string/map_header">
+
+        <SwitchPreferenceCompat
+            app:key="map_auto_pan"
+            app:title="@string/map_auto_pan" />
+
+        <SwitchPreferenceCompat
+            app:key="map_echo_location"
+            app:title="@string/map_echo_location" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

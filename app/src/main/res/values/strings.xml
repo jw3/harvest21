@@ -6,6 +6,7 @@
     <!-- Preference Titles -->
     <string name="broker_header">Broker</string>
     <string name="events_header">Events</string>
+    <string name="map_header">Map</string>
 
     <!-- Broker Preferences -->
     <string name="broker_url_title">Broker URL</string>
@@ -15,5 +16,9 @@
 
     <!-- Events Preferences -->
     <string name="events_device_uid_title">Device Name</string>
-    <string name="events_send_pos_title">Send my position</string>
+    <string name="events_send_pos_title">Send my location</string>
+
+    <!-- Maps Preferences -->
+    <string name="map_auto_pan">Auto Pan</string>
+    <string name="map_echo_location">Echo my location</string>
 </resources>
