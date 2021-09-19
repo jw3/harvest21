@@ -8,6 +8,7 @@ import android.os.IBinder
 import android.os.Message
 import android.os.Messenger
 import android.widget.Toast
+import com.esri.arcgisruntime.geometry.GeometryEngine
 import com.esri.arcgisruntime.geometry.Point
 import com.esri.arcgisruntime.location.AndroidLocationDataSource
 import com.github.jw3.harvest21.prefs.BrokerPrefs
@@ -38,7 +39,7 @@ class TheService : Service(), Events {
     override val subscribers = ArrayList<Messenger>()
     private lateinit var messenger: Messenger
 
-    var lastPos: Point? = null
+    private var lastKnownLoc: Point? = null
     private lateinit var svcConnection: ServiceConnection
 
     @ExperimentalSerializationApi
@@ -53,16 +54,38 @@ class TheService : Service(), Events {
             opts.userName = prefs.user
             opts.password = prefs.pass
 
+            // todo;; pref map_min_move_distance
+            val minMoveDistance = 5
+
+            // todo;; pref map_move_resolution
+            val moveResolution = 5
+
+
             client.connect(opts, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     asyncActionToken?.let { tok ->
-                        val alds = AndroidLocationDataSource(applicationContext,"gps", 5L, 1f)
+                        val alds = AndroidLocationDataSource(applicationContext,"gps", 500L, 1f)
                         alds.addLocationChangedListener { moved ->
-                            val loc = moved.location
-                            val m = P(loc.position.x, loc.position.y)
-                            val payload = Json.encodeToString(m)
-                            tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
-                            Toast.makeText(applicationContext, "moved: ✅", Toast.LENGTH_SHORT).show()
+                            val curr = moved.location.position
+                            when(lastKnownLoc) {
+                                null -> {
+                                    lastKnownLoc = curr
+                                    val payload = makePayload(curr, moveResolution)
+
+                                    // todo;; bug elsewhere requiring a double init event for symbol
+                                    tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
+                                    tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
+                                    Toast.makeText(applicationContext, "first move ✅", Toast.LENGTH_SHORT).show()
+                                }
+                                else -> {
+                                    val d = GeometryEngine.distanceBetween(curr, lastKnownLoc)
+                                    if(d > minMoveDistance) {
+                                        val payload = makePayload(curr, moveResolution)
+                                        tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
+                                    }
+                                    Toast.makeText(applicationContext, "move ${d}m ✅", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         }
                         alds.startAsync()
                         Toast.makeText(applicationContext, "connected ✅", Toast.LENGTH_SHORT).show()
@@ -82,7 +105,7 @@ class TheService : Service(), Events {
                                                 val e = Json.decodeFromString<P>(encoded)
                                                 val b = Bundle()
                                                 b.putString("id", id)
-                                                b.putParcelable("e", M(id, e.x, e.y))
+                                                b.putParcelable("e", M(id, e.x.toDouble(), e.y.toDouble()))
                                                 val m: Message = Message.obtain(null, Events.Move).also { it.data = b }
                                                 subscribers.forEach { it.send(m) }
                                             }
@@ -116,5 +139,14 @@ class TheService : Service(), Events {
     override fun onBind(intent: Intent): IBinder {
         messenger = Messenger(ProducerHandler(this@TheService))
         return messenger.binder
+    }
+
+    companion object {
+        @ExperimentalSerializationApi
+        fun makePayload(pt: Point, res: Int): String {
+            val x = String.format("%.${res}f", pt.x)
+            val y = String.format("%.${res}f", pt.y)
+            return Json.encodeToString(P(x, y))
+        }
     }
 }

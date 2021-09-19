@@ -21,7 +21,7 @@ enum class Delayed(val rgb: Int, val style: SimpleMarkerSymbol.Style) {
 
 // Wire format
 @Serializable
-data class P(val x: Double, val y: Double)
+data class P(val x: String, val y: String)
 
 // IPC format
 @Parcelize

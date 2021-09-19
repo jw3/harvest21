@@ -8,3 +8,4 @@
 - https://www.hivemq.com/blog/mqtt-essentials-part-5-mqtt-topics-best-practices
 - https://kotlinlang.org/docs/serialization.html#example-json-serialization
 - https://gis.stackexchange.com/a/8674
+- https://developers.arcgis.com/android/
