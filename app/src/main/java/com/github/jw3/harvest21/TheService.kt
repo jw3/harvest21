@@ -53,9 +53,14 @@ class TheService : Service(), Events {
             val opts = MqttConnectOptions()
             opts.userName = prefs.user
             opts.password = prefs.pass
+            opts.isAutomaticReconnect = true
+            opts.maxReconnectDelay = 30 * 1000
 
             // todo;; pref map_min_move_distance
-            val minMoveDistance = 5
+            val minMoveDistance = 5f
+
+            // todo;; pref map_min_ping_interval
+            val minPingInterval = 35 * 1000L
 
             // todo;; pref map_move_resolution
             val moveResolution = 5
@@ -64,7 +69,7 @@ class TheService : Service(), Events {
             client.connect(opts, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     asyncActionToken?.let { tok ->
-                        val alds = AndroidLocationDataSource(applicationContext,"gps", 500L, 1f)
+                        val alds = AndroidLocationDataSource(applicationContext,"gps", minPingInterval, minMoveDistance)
                         alds.addLocationChangedListener { moved ->
                             val curr = moved.location.position
                             when(lastKnownLoc) {
@@ -77,10 +82,8 @@ class TheService : Service(), Events {
                                 }
                                 else -> {
                                     val d = GeometryEngine.distanceBetween(curr, lastKnownLoc)
-                                    if(d >= minMoveDistance) {
-                                        val payload = makePayload(curr, moveResolution)
-                                        tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
-                                    }
+                                    val payload = makePayload(curr, moveResolution)
+                                    tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
                                     Toast.makeText(applicationContext, "move ${d}m ✅", Toast.LENGTH_SHORT).show()
                                 }
                             }
