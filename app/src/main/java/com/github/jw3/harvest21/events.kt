@@ -29,6 +29,7 @@ data class M(val id: String, val x: Double, val y: Double): Parcelable
 
 interface Events {
     val subscribers: ArrayList<Messenger>
+    val state: HashMap<String, Message>
 
     companion object {
         val Sub = 100
@@ -39,7 +40,10 @@ interface Events {
 class ProducerHandler(private val e: Events) : Handler() {
     override fun handleMessage(msg: Message) {
         when (msg.what) {
-            Events.Sub -> e.subscribers.add(msg.replyTo)
+            Events.Sub -> {
+                e.subscribers.add(msg.replyTo)
+                e.state.forEach { (_, v) -> msg.replyTo.send(v) }
+            }
         }
     }
 }

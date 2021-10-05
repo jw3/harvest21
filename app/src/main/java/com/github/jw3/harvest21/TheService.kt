@@ -19,9 +19,10 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.eclipse.paho.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.*
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 
 /**
@@ -32,15 +33,24 @@ import javax.inject.Inject
  */
 @AndroidEntryPoint
 class TheService : Service(), Events {
-    @Inject lateinit var map: MapPrefs
-    @Inject lateinit var prefs: BrokerPrefs
-    @Inject lateinit var device: DevicePrefs
+    @Inject
+    lateinit var map: MapPrefs
+    @Inject
+    lateinit var prefs: BrokerPrefs
+    @Inject
+    lateinit var device: DevicePrefs
 
     override val subscribers = ArrayList<Messenger>()
     private lateinit var messenger: Messenger
 
-    private var lastKnownLoc: Point? = null
+    private var lastLocation: Point? = null
     private lateinit var svcConnection: ServiceConnection
+
+    private lateinit var mqttClient: MqttAsyncClient
+    private lateinit var locationListener: AndroidLocationDataSource
+
+    override val state = HashMap<String, Message>()
+
 
     @ExperimentalSerializationApi
     override fun onCreate() {
@@ -48,93 +58,92 @@ class TheService : Service(), Events {
 
         val msg = "connecting to ${prefs.url} as ${prefs.user}"
 
-        try {
-            val client = MqttAndroidClient(this, "ssl://${prefs.url}:443", device.id)
-            val opts = MqttConnectOptions()
-            opts.userName = prefs.user
-            opts.password = prefs.pass
-            opts.isAutomaticReconnect = true
-            opts.maxReconnectDelay = 30 * 1000
 
-            // todo;; pref map_min_move_distance
-            val minMoveDistance = 5f
+        mqttClient = MqttAsyncClient("ssl://${prefs.url}:443", device.id, MemoryPersistence())
+        val opts = MqttConnectOptions()
+        opts.userName = prefs.user
+        opts.password = prefs.pass
+        opts.keepAliveInterval = 10
+        opts.isAutomaticReconnect = true
+        opts.maxReconnectDelay = 30 * 1000
+        mqttClient.connect(opts).waitForCompletion()
 
-            // todo;; pref map_min_ping_interval
-            val minPingInterval = 35 * 1000L
+        // todo;; pref map_min_move_distance
+        val minMoveDistance = 1f
 
-            // todo;; pref map_move_resolution
-            val moveResolution = 5
+        // todo;; pref map_min_ping_interval
+        val minPingInterval = 10 * 1000L
 
+        // todo;; pref map_move_resolution
+        val moveResolution = 5
 
-            client.connect(opts, null, object : IMqttActionListener {
-                override fun onSuccess(asyncActionToken: IMqttToken?) {
-                    asyncActionToken?.let { tok ->
-                        val alds = AndroidLocationDataSource(applicationContext,"gps", minPingInterval, minMoveDistance)
-                        alds.addLocationChangedListener { moved ->
-                            val curr = moved.location.position
-                            when(lastKnownLoc) {
-                                null -> {
-                                    lastKnownLoc = curr
-
-                                    val payload = makePayload(curr, moveResolution)
-                                    tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
-                                    Toast.makeText(applicationContext, "first move ✅", Toast.LENGTH_SHORT).show()
-                                }
-                                else -> {
-                                    val d = GeometryEngine.distanceBetween(curr, lastKnownLoc)
-                                    val payload = makePayload(curr, moveResolution)
-                                    tok.client.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
-                                    Toast.makeText(applicationContext, "move ${d}m ✅", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                        alds.startAsync()
-                        Toast.makeText(applicationContext, "connected ✅", Toast.LENGTH_SHORT).show()
-
-                        // topic: device-id/m
-                        // topic: device-id/+
-                        // topic: +/m
-                        // device-id first allows simple substring to parse the id
-                        tok.client.subscribe("+/m", 0).let { sub ->
-                            sub.client.setCallback(object : MqttCallback {
-                                override fun messageArrived(topic: String?, message: MqttMessage?) {
-                                    println("received $topic ${message.toString()}")
-                                    topic?.split("/", limit = 2)?.first()?.let { id ->
-                                        if(id != device.id || map.echoLocation) {
-                                            val payload = message?.payload?.let { String(it) }
-                                            payload?.let { encoded ->
-                                                val e = Json.decodeFromString<P>(encoded)
-                                                val b = Bundle()
-                                                b.putString("id", id)
-                                                b.putParcelable("e", M(id, e.x.toDouble(), e.y.toDouble()))
-                                                val m: Message = Message.obtain(null, Events.Move).also { it.data = b }
-                                                subscribers.forEach { it.send(m) }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                override fun connectionLost(cause: Throwable?) {
-                                    println("================== connection lost ==================")
-                                }
-
-                                override fun deliveryComplete(token: IMqttDeliveryToken?) {
-                                }
-                            })
+        // topic: device-id/m
+        // topic: device-id/+
+        // topic: +/m
+        // device-id first allows simple substring to parse the id
+        mqttClient.subscribe("+/m", 1)
+        mqttClient.setCallback(object : MqttCallbackExtended {
+            override fun messageArrived(topic: String?, message: MqttMessage?) {
+                topic?.split("/", limit = 2)?.first()?.let { id ->
+                    if (id != device.id || map.echoLocation) {
+                        val payload = message?.payload?.let { String(it) }
+                        payload?.let { encoded ->
+                            val e = Json.decodeFromString<P>(encoded)
+                            val b = Bundle()
+                            b.putString("id", id)
+                            b.putParcelable("e", M(id, e.x.toDouble(), e.y.toDouble()))
+                            val m: Message = Message.obtain(null, Events.Move).also { it.data = b }
+                            state[id] = m
+                            subscribers.forEach { it.send(m) }
                         }
                     }
                 }
+                println("received $topic ${message.toString()}")
+            }
 
-                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                    Toast.makeText(applicationContext, "$msg\n❗${exception?.cause?.message}", Toast.LENGTH_LONG).show()
+            override fun deliveryComplete(token: IMqttDeliveryToken?) {
+            }
+
+            override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                Toast.makeText(applicationContext, "connected ✅", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun connectionLost(cause: Throwable?) {
+                Toast.makeText(applicationContext, "❗ connection lost ❗", Toast.LENGTH_LONG).show()
+            }
+        })
+
+        locationListener = AndroidLocationDataSource(applicationContext, "gps", minPingInterval, minMoveDistance)
+        locationListener.addLocationChangedListener { moved ->
+            try {
+                if(!mqttClient.isConnected){
+                    mqttClient.reconnect()
                 }
-            })
-
-
-        } catch (e: Exception) {
-            Toast.makeText(applicationContext, "$msg\n❗${e.cause?.message}", Toast.LENGTH_LONG).show()
-            return
+                val here = moved.location.position
+                when (lastLocation) {
+                    null -> {
+                        val payload = makePayload(here, moveResolution)
+                        mqttClient.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
+                        Toast.makeText(applicationContext, "first move ✅", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                    else -> {
+                        val d = GeometryEngine.distanceBetween(here, lastLocation)
+                        val payload = makePayload(here, moveResolution)
+                        mqttClient.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
+                        Toast.makeText(applicationContext, "move ${d.roundToInt()}m ✅", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                }
+                lastLocation = here
+            } catch (e: Exception) {
+                Toast.makeText(applicationContext, "$msg\n❗${e.message} ${mqttClient.isConnected}", Toast.LENGTH_LONG)
+                    .show()
+            }
         }
+
+        // once all wired up start listening for our moves
+        locationListener.startAsync()
     }
 
     override fun onBind(intent: Intent): IBinder {
