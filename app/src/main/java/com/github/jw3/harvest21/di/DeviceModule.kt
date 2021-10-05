@@ -17,7 +17,7 @@ class DeviceModule {
     fun providePrefs(@ApplicationContext applicationContext: Context): DevicePrefs {
         val prefs = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         val id = prefs.getString("device_uid", "androidz").let {
-            if(it.isNullOrBlank()) "unknown" else it
+            if (it.isNullOrBlank()) "unknown" else it
         }
         return DevicePrefs.newInstance(id)
     }

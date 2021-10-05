@@ -5,7 +5,7 @@ interface DevicePrefs {
 
     companion object {
         @JvmStatic
-        fun newInstance(id: String) = object: DevicePrefs {
+        fun newInstance(id: String) = object : DevicePrefs {
             override val id: String
                 get() = id
         }

@@ -31,7 +31,8 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MapFragment : Fragment(), CoroutineScope by MainScope() {
-    @Inject lateinit var prefs: MapPrefs
+    @Inject
+    lateinit var prefs: MapPrefs
 
     private lateinit var svcConnection: ServiceConnection
 
@@ -68,23 +69,31 @@ class MapFragment : Fragment(), CoroutineScope by MainScope() {
         val basemapPath = applicationContext.filesDir
 
         val fragment = inflater.inflate(R.layout.fragment_map, container, false)
-        fragment.findViewById<com.esri.arcgisruntime.mapping.view.MapView>(R.id.mapView)?.let { frag ->
-            val pos: Point = currentLocation(applicationContext)?.let { Point(it.longitude, it.latitude, geo.wgs84) } ?: geo.pt0
-            frag.mapView.map = basemaps.fromStorage(basemapPath)?.let { base ->
-                val m = ArcGISMap(geo.sr)
-                m.basemap = base
-                m.initialViewpoint = Viewpoint(pos, initialScale)
-                m
-            } ?: ArcGISMap(Basemap.Type.IMAGERY, pos.x, pos.y, 15)
+        fragment.findViewById<com.esri.arcgisruntime.mapping.view.MapView>(R.id.mapView)
+            ?.let { frag ->
+                val pos: Point = currentLocation(applicationContext)?.let {
+                    Point(
+                        it.longitude,
+                        it.latitude,
+                        geo.wgs84
+                    )
+                } ?: geo.pt0
+                frag.mapView.map = basemaps.fromStorage(basemapPath)?.let { base ->
+                    val m = ArcGISMap(geo.sr)
+                    m.basemap = base
+                    m.initialViewpoint = Viewpoint(pos, initialScale)
+                    m
+                } ?: ArcGISMap(Basemap.Type.IMAGERY, pos.x, pos.y, 15)
 
-            frag.mapView.locationDisplay.isShowLocation = prefs.echoLocation.not()
-            if(prefs.autoPan) {
-                frag.mapView.locationDisplay.autoPanMode = LocationDisplay.AutoPanMode.NAVIGATION
+                frag.mapView.locationDisplay.isShowLocation = prefs.echoLocation.not()
+                if (prefs.autoPan) {
+                    frag.mapView.locationDisplay.autoPanMode =
+                        LocationDisplay.AutoPanMode.NAVIGATION
+                }
+
+                frag.mapView.graphicsOverlays.add(locationsLayer)
+                frag.mapView.locationDisplay.startAsync()
             }
-
-            frag.mapView.graphicsOverlays.add(locationsLayer)
-            frag.mapView.locationDisplay.startAsync()
-        }
 
         svcConnection = EventsServiceConnection(consumer)
         applicationContext.bindService(

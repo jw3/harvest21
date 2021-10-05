@@ -7,7 +7,7 @@ interface BrokerPrefs {
 
     companion object {
         @JvmStatic
-        fun newInstance(url: String, user: String, pass: CharArray) = object: BrokerPrefs {
+        fun newInstance(url: String, user: String, pass: CharArray) = object : BrokerPrefs {
             override val url: String
                 get() = url
             override val user: String

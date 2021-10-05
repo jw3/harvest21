@@ -25,7 +25,7 @@ data class P(val x: String, val y: String)
 
 // IPC format
 @Parcelize
-data class M(val id: String, val x: Double, val y: Double): Parcelable
+data class M(val id: String, val x: Double, val y: Double) : Parcelable
 
 interface Events {
     val subscribers: ArrayList<Messenger>

@@ -6,7 +6,7 @@ interface MapPrefs {
 
     companion object {
         @JvmStatic
-        fun newInstance(autoPan: Boolean, echoLocation: Boolean) = object: MapPrefs {
+        fun newInstance(autoPan: Boolean, echoLocation: Boolean) = object : MapPrefs {
             override val autoPan: Boolean
                 get() = autoPan
             override val echoLocation: Boolean

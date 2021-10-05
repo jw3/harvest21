@@ -20,14 +20,11 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.eclipse.paho.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import javax.inject.Inject
 import kotlin.math.roundToInt
-import org.eclipse.paho.android.service.MqttAndroidClient
-
-
-
 
 
 /**
@@ -40,8 +37,10 @@ import org.eclipse.paho.android.service.MqttAndroidClient
 class TheService : Service(), Events {
     @Inject
     lateinit var map: MapPrefs
+
     @Inject
     lateinit var prefs: BrokerPrefs
+
     @Inject
     lateinit var device: DevicePrefs
 
@@ -63,7 +62,12 @@ class TheService : Service(), Events {
         val msg = "connecting to ${prefs.url} as ${prefs.user}"
 
         //mqttClient = MqttAsyncClient("ssl://${prefs.url}:443", device.id, MemoryPersistence())
-        mqttClient = MqttAndroidClient(this.applicationContext, "ssl://${prefs.url}:443", device.id, MemoryPersistence())
+        mqttClient = MqttAndroidClient(
+            this.applicationContext,
+            "ssl://${prefs.url}:443",
+            device.id,
+            MemoryPersistence()
+        )
 
         val opts = MqttConnectOptions()
         opts.userName = prefs.user
@@ -71,7 +75,7 @@ class TheService : Service(), Events {
         opts.keepAliveInterval = 10
         opts.isAutomaticReconnect = true
         opts.maxReconnectDelay = 30 * 1000
-        mqttClient.connect(opts).actionCallback = object: IMqttActionListener {
+        mqttClient.connect(opts).actionCallback = object : IMqttActionListener {
             override fun onSuccess(asyncActionToken: IMqttToken?) {
                 initializeLocationServices()
             }
@@ -125,7 +129,8 @@ class TheService : Service(), Events {
         // todo;; pref map_min_ping_interval
         val minPingInterval = 10 * 1000L
 
-        locationListener = AndroidLocationDataSource(applicationContext, "gps", minPingInterval, minMoveDistance)
+        locationListener =
+            AndroidLocationDataSource(applicationContext, "gps", minPingInterval, minMoveDistance)
         locationListener.addLocationChangedListener { moved -> handleLocalMovement(moved) }
         locationListener.startAsync()
     }
@@ -150,14 +155,22 @@ class TheService : Service(), Events {
                     val d = GeometryEngine.distanceBetween(here, lastLocation)
                     val payload = makePayload(here, moveResolution)
                     mqttClient.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
-                    Toast.makeText(applicationContext, "move ${d.roundToInt()}m ✅", Toast.LENGTH_SHORT)
+                    Toast.makeText(
+                        applicationContext,
+                        "move ${d.roundToInt()}m ✅",
+                        Toast.LENGTH_SHORT
+                    )
                         .show()
                 }
             }
             lastLocation = here
         } catch (e: Exception) {
             val msg = "connecting to ${prefs.url} as ${prefs.user}"
-            Toast.makeText(applicationContext, "$msg\n❗${e.message} ${mqttClient.isConnected}", Toast.LENGTH_LONG)
+            Toast.makeText(
+                applicationContext,
+                "$msg\n❗${e.message} ${mqttClient.isConnected}",
+                Toast.LENGTH_LONG
+            )
                 .show()
         }
     }
