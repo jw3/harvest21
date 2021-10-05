@@ -11,6 +11,7 @@ import android.widget.Toast
 import com.esri.arcgisruntime.geometry.GeometryEngine
 import com.esri.arcgisruntime.geometry.Point
 import com.esri.arcgisruntime.location.AndroidLocationDataSource
+import com.esri.arcgisruntime.location.LocationDataSource
 import com.github.jw3.harvest21.prefs.BrokerPrefs
 import com.github.jw3.harvest21.prefs.DevicePrefs
 import com.github.jw3.harvest21.prefs.MapPrefs
@@ -23,6 +24,10 @@ import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import javax.inject.Inject
 import kotlin.math.roundToInt
+import org.eclipse.paho.android.service.MqttAndroidClient
+
+
+
 
 
 /**
@@ -46,11 +51,10 @@ class TheService : Service(), Events {
     private var lastLocation: Point? = null
     private lateinit var svcConnection: ServiceConnection
 
-    private lateinit var mqttClient: MqttAsyncClient
+    private lateinit var mqttClient: MqttAndroidClient
     private lateinit var locationListener: AndroidLocationDataSource
 
     override val state = HashMap<String, Message>()
-
 
     @ExperimentalSerializationApi
     override fun onCreate() {
@@ -58,25 +62,27 @@ class TheService : Service(), Events {
 
         val msg = "connecting to ${prefs.url} as ${prefs.user}"
 
+        //mqttClient = MqttAsyncClient("ssl://${prefs.url}:443", device.id, MemoryPersistence())
+        mqttClient = MqttAndroidClient(this.applicationContext, "ssl://${prefs.url}:443", device.id, MemoryPersistence())
 
-        mqttClient = MqttAsyncClient("ssl://${prefs.url}:443", device.id, MemoryPersistence())
         val opts = MqttConnectOptions()
         opts.userName = prefs.user
         opts.password = prefs.pass
         opts.keepAliveInterval = 10
         opts.isAutomaticReconnect = true
         opts.maxReconnectDelay = 30 * 1000
-        mqttClient.connect(opts).waitForCompletion()
+        mqttClient.connect(opts).actionCallback = object: IMqttActionListener {
+            override fun onSuccess(asyncActionToken: IMqttToken?) {
+                initializeLocationServices()
+            }
 
-        // todo;; pref map_min_move_distance
-        val minMoveDistance = 1f
+            override fun onFailure(asyncActionToken: IMqttToken?, e: Throwable?) {
+                Toast.makeText(applicationContext, "$msg\n❗${e?.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
-        // todo;; pref map_min_ping_interval
-        val minPingInterval = 10 * 1000L
-
-        // todo;; pref map_move_resolution
-        val moveResolution = 5
-
+    fun initializeLocationServices() {
         // topic: device-id/m
         // topic: device-id/+
         // topic: +/m
@@ -113,37 +119,47 @@ class TheService : Service(), Events {
             }
         })
 
-        locationListener = AndroidLocationDataSource(applicationContext, "gps", minPingInterval, minMoveDistance)
-        locationListener.addLocationChangedListener { moved ->
-            try {
-                if(!mqttClient.isConnected){
-                    mqttClient.reconnect()
-                }
-                val here = moved.location.position
-                when (lastLocation) {
-                    null -> {
-                        val payload = makePayload(here, moveResolution)
-                        mqttClient.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
-                        Toast.makeText(applicationContext, "first move ✅", Toast.LENGTH_SHORT)
-                            .show()
-                    }
-                    else -> {
-                        val d = GeometryEngine.distanceBetween(here, lastLocation)
-                        val payload = makePayload(here, moveResolution)
-                        mqttClient.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
-                        Toast.makeText(applicationContext, "move ${d.roundToInt()}m ✅", Toast.LENGTH_SHORT)
-                            .show()
-                    }
-                }
-                lastLocation = here
-            } catch (e: Exception) {
-                Toast.makeText(applicationContext, "$msg\n❗${e.message} ${mqttClient.isConnected}", Toast.LENGTH_LONG)
-                    .show()
-            }
-        }
+        // todo;; pref map_min_move_distance
+        val minMoveDistance = 1f
 
-        // once all wired up start listening for our moves
+        // todo;; pref map_min_ping_interval
+        val minPingInterval = 10 * 1000L
+
+        locationListener = AndroidLocationDataSource(applicationContext, "gps", minPingInterval, minMoveDistance)
+        locationListener.addLocationChangedListener { moved -> handleLocalMovement(moved) }
         locationListener.startAsync()
+    }
+
+    fun handleLocalMovement(moved: LocationDataSource.LocationChangedEvent) {
+        // todo;; pref map_min_move_distance
+        val minMoveDistance = 1f
+
+        // todo;; pref map_move_resolution
+        val moveResolution = 5
+
+        try {
+            val here = moved.location.position
+            when (lastLocation) {
+                null -> {
+                    val payload = makePayload(here, moveResolution)
+                    mqttClient.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
+                    Toast.makeText(applicationContext, "first move ✅", Toast.LENGTH_SHORT)
+                        .show()
+                }
+                else -> {
+                    val d = GeometryEngine.distanceBetween(here, lastLocation)
+                    val payload = makePayload(here, moveResolution)
+                    mqttClient.publish("${device.id}/m", MqttMessage(payload.toByteArray()))
+                    Toast.makeText(applicationContext, "move ${d.roundToInt()}m ✅", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
+            lastLocation = here
+        } catch (e: Exception) {
+            val msg = "connecting to ${prefs.url} as ${prefs.user}"
+            Toast.makeText(applicationContext, "$msg\n❗${e.message} ${mqttClient.isConnected}", Toast.LENGTH_LONG)
+                .show()
+        }
     }
 
     override fun onBind(intent: Intent): IBinder {
