@@ -2,6 +2,13 @@
 ===
 
 
+## MQTT to OpenShift via TLS on Android
+
+1. I didnt write anything down :(
+2. It looks like we have a server.pem
+
+
+
 ## references
 - https://stackoverflow.com/a/68641725
 - https://developer.android.com/training/articles/security-config.html

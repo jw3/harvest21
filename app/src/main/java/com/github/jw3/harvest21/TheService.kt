@@ -21,6 +21,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.eclipse.paho.android.service.MqttAndroidClient
+import org.eclipse.paho.android.service.MqttService
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import javax.inject.Inject
@@ -44,6 +45,10 @@ class TheService : Service(), Events {
     @Inject
     lateinit var device: DevicePrefs
 
+    @Inject
+    lateinit var scheduler: WorkScheduler
+
+
     override val subscribers = ArrayList<Messenger>()
     private lateinit var messenger: Messenger
 
@@ -55,9 +60,12 @@ class TheService : Service(), Events {
 
     override val state = HashMap<String, Message>()
 
+    private lateinit var connActor: MqttConnActor
+
     @ExperimentalSerializationApi
     override fun onCreate() {
         super.onCreate()
+
 
         val msg = "connecting to ${prefs.url} as ${prefs.user}"
 
@@ -68,16 +76,24 @@ class TheService : Service(), Events {
             device.id,
             MemoryPersistence()
         )
+        connActor = MqttConnActor(mqttClient)
+
+
 
         val opts = MqttConnectOptions()
         opts.userName = prefs.user
         opts.password = prefs.pass
         opts.keepAliveInterval = 10
+        opts.connectionTimeout = 5
         opts.isAutomaticReconnect = true
         opts.maxReconnectDelay = 30 * 1000
-        mqttClient.connect(opts).actionCallback = object : IMqttActionListener {
+
+
+
+        val client = mqttClient.connect(opts)
+        client.actionCallback = object : IMqttActionListener {
             override fun onSuccess(asyncActionToken: IMqttToken?) {
-                initializeLocationServices()
+                initializeLocationServices(opts)
             }
 
             override fun onFailure(asyncActionToken: IMqttToken?, e: Throwable?) {
@@ -86,7 +102,7 @@ class TheService : Service(), Events {
         }
     }
 
-    fun initializeLocationServices() {
+    fun initializeLocationServices(opts: MqttConnectOptions) {
         // topic: device-id/m
         // topic: device-id/+
         // topic: +/m
@@ -120,6 +136,7 @@ class TheService : Service(), Events {
 
             override fun connectionLost(cause: Throwable?) {
                 Toast.makeText(applicationContext, "❗ connection lost ❗", Toast.LENGTH_LONG).show()
+                connActor.actor.offer(Reconnect(opts))
             }
         })
 

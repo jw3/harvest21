@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
             .replace(R.id.mapContainer, map)
             .commit()
 
-        startService(Intent(this, TheService::class.java))
+        startForegroundService(Intent(this, TheService::class.java))
     }
 
     private fun askGpsPermission() {

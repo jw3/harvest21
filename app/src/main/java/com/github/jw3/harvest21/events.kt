@@ -8,6 +8,7 @@ import com.esri.arcgisruntime.symbology.SimpleMarkerSymbol
 import kotlinx.android.parcel.Parcelize
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.serialization.Serializable
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 
 sealed class Msg
 data class Move(val x: Double, val y: Double) : Msg()
@@ -85,3 +86,7 @@ class EventsServiceConnection(val consumer: Messenger) : ServiceConnection {
         println("null")
     }
 }
+
+
+sealed class MqttMsq
+data class Reconnect(val opts: MqttConnectOptions) : MqttMsq()
